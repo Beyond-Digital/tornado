@@ -23,6 +23,7 @@ import logging
 import pycurl
 import threading
 import time
+import oboeware.tornado
 
 from tornado import httputil
 from tornado import ioloop
@@ -264,6 +265,7 @@ class CurlAsyncHTTPClient(AsyncHTTPClient):
             total=curl.getinfo(pycurl.TOTAL_TIME),
             redirect=curl.getinfo(pycurl.REDIRECT_TIME),
         )
+        oboeware.tornado.AsyncHTTPClient_finish(info["request"], info["callback"], info["headers"])
         try:
             info["callback"](HTTPResponse(
                 request=info["request"], code=code, headers=info["headers"],

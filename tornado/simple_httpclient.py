@@ -20,6 +20,8 @@ import socket
 import ssl
 import sys
 
+import oboeware
+
 try:
     from io import BytesIO  # python 3
 except ImportError:
@@ -450,6 +452,9 @@ class _HTTPConnection(object):
                                 request_time=self.io_loop.time() - self.start_time,
                                 buffer=buffer,
                                 effective_url=self.request.url)
+
+        oboeware.tornado.AsyncHTTPClient_finish(original_request, self.final_callback, response.headers)
+
         self._run_callback(response)
         self._on_end_request()
 

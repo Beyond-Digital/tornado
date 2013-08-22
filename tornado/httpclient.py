@@ -39,6 +39,7 @@ from tornado import httputil, stack_context
 from tornado.ioloop import IOLoop
 from tornado.util import Configurable
 
+import oboeware
 
 class HTTPClient(object):
     """A blocking HTTP client.
@@ -169,6 +170,7 @@ class AsyncHTTPClient(Configurable):
         """
         if not isinstance(request, HTTPRequest):
             request = HTTPRequest(url=request, **kwargs)
+        oboeware.tornado.AsyncHTTPClient_start(request)
         # We may modify this (to add Host, Accept-Encoding, etc),
         # so make sure we don't modify the caller's object.  This is also
         # where normal dicts get converted to HTTPHeaders objects.

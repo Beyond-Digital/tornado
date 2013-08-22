@@ -249,6 +249,17 @@ def _remove_deactivated(contexts):
 
     return (stack_contexts, head)
 
+class OboeStackContextWrapper(object):
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        self._oboe_ctx = oboe.Context.get_default().copy()
+
+    def __call__(self, *args, **kwargs):
+        old_ctx = oboe.Context.get_default().copy()
+        with oboeware.async.OboeContextManager(self):
+            ret = self.wrapped(*args, **kwargs)
+        old_ctx.set_as_default()
+        return ret
 
 def wrap(fn):
     """Returns a callable object that will restore the current `StackContext`
@@ -259,7 +270,7 @@ def wrap(fn):
     asynchronously in the same thread).
     """
     # Check if function is already wrapped
-    if fn is None or hasattr(fn, '_wrapped'):
+    if fn is None or hasattr(fn, '_wrapped') or isinstance(fn, OboeStackContextWrapper):
         return fn
 
     # Capture current stack head
@@ -334,8 +345,11 @@ def wrap(fn):
         return ret
 
     wrapped._wrapped = True
-    return wrapped
 
+    if oboe.Context.get_default().is_valid():
+        return OboeStackContextWrapper(wrapped)
+    else:
+        return wrapped
 
 def _handle_exception(tail, exc):
     while tail is not None:

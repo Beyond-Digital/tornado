@@ -73,6 +73,7 @@ import tornado
 import traceback
 import types
 import uuid
+import oboeware.tornado, oboeware.async
 
 from tornado.concurrent import Future
 from tornado import escape
@@ -141,6 +142,7 @@ class RequestHandler(object):
                                                     application.ui_modules)
         self.ui["modules"] = self.ui["_tt_modules"]
         self.clear()
+        oboeware.tornado.RequestHandler_start(self)
         # Check since connection is not available in WSGI
         if getattr(self.request, "connection", None):
             self.request.connection.set_close_callback(
@@ -756,6 +758,8 @@ class RequestHandler(object):
             # are keepalive connections)
             self.request.connection.stream.set_close_callback(None)
 
+        oboeware.tornado.RequestHandler_finish(self)
+
         if not self.application._wsgi:
             self.flush(include_footers=True)
             self.request.finish()
@@ -783,6 +787,9 @@ class RequestHandler(object):
                 self.finish()
             return
         self.clear()
+
+        # Replace the X-Trace header that was just cleared.
+        self.set_header("X-Trace", self.request._oboe_finish_ev.id())
 
         reason = None
         if 'exc_info' in kwargs:
@@ -1158,9 +1165,10 @@ class RequestHandler(object):
 
     def _execute_method(self):
         if not self._finished:
-            method = getattr(self, self.request.method.lower())
-            self._when_complete(method(*self.path_args, **self.path_kwargs),
-                                self._execute_finish)
+            with oboeware.async.OboeContextManager(self.request):
+                method = getattr(self, self.request.method.lower())
+                self._when_complete(method(*self.path_args, **self.path_kwargs),
+                                    self._execute_finish)
 
     def _execute_finish(self):
         if self._auto_finish and not self._finished:
